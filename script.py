@@ -1,3 +1,9 @@
+import sentry_sdk
+sentry_sdk.init(
+    "SENTRY_DSN",
+    traces_sample_rate=1.0
+)
+
 import sys, traceback
 import os
 import requests
@@ -9,20 +15,26 @@ import schedule
 import time
 import RPi.GPIO as GPIO
 
-url_power = 'http://open.hab/rest/items/Gang_Power'
-url_color = 'http://open.hab/rest/items/Gang_Color'
+
+url_power = 'http://192.168.178.10:8080/rest/items/Gang_Power'
+url_color = 'http://192.168.178.10:8080/rest/items/Gang_Color'
 PIN=23
 
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(PIN,GPIO.IN)
 
-color = "null"
+color = "0"
 state = "false"
+
+headers={
+    'Content-type':'text/plain', 
+    'Accept':'application/json'
+}
 
 def switchLight(key):
     global color, brightness, state, url_power, url_color
     if key == "OFF":
-        r = requests.post(url_power, 'OFF')
+        r = requests.post(url_power, 'OFF', headers=headers)
         state = "false"
     else: 
         now = datetime.now()
@@ -30,9 +42,9 @@ def switchLight(key):
             brightness = 100
         else:
             brightness = 15
-        r=requests.post(url_color, "{},100,{}".format(color, brightness))
+        r=requests.post(url_color, "{},100,{}".format(color, brightness), headers=headers)
         state = "true"
-
+        
 def generateColor():
     global color
     color = randrange(360)
@@ -54,7 +66,7 @@ class ResumableTimer:
         self.timer.start()
 
 generateColor()
-schedule.every().day.at("0:00").do(generateColor)
+schedule.every().day.at("00:00").do(generateColor)
 
 timer = ResumableTimer(30, switchLight, ("OFF",))
 
